@@ -1,0 +1,11 @@
+trl 
+peft 
+accelerate 
+bitsandbytes 
+datasets
+huggingface_hub
+ipykernel
+datasets 
+pandas 
+requests 
+beautifulsoup4

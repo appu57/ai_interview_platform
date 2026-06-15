@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-bg: #0A0B0D;
+}
+
+/* Tailwind v4 native element styling target */
+body {
+  background-color: #0A0B0D;
+  color: var(--color-slate-100);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Native selection configuration rules */
+::selection {
+  background-color: rgba(99, 102, 241, 0.3);
+  color: var(--color-indigo-200);
+}
+
+/* Custom premium ambient flows */
+.premium-glow {
+  position: relative;
+}
+
+.premium-glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}

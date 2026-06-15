@@ -1,0 +1,27 @@
+# Models & large artifacts
+base_model/
+outputs/
+finetune/adapter/
+finetune/merged/
+finetune/gguf/
+llama.cpp/
+
+# RAG store (vector DB; Neo4j data lives in Docker volume, not here)
+backend/rag/rag_store/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+.next/
+
+# Env
+.env
+
+*.deb
+*.rpm
+*.msi
+*.exe
