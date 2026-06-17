@@ -9,3 +9,14 @@ datasets
 pandas 
 requests 
 beautifulsoup4
+groq
+dotenv
+fastapi
+sqlalchemy 
+asyncpg 
+pgvector 
+pydantic-settings
+bcrypt
+uvicorn
+pydantic[email] #validators
+pyjwt>=2.13.0

@@ -1,23 +1,39 @@
 import React, { useState } from 'react';
-import { Terminal, ArrowLeft } from 'lucide-react';
+import { Terminal, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
+import api from '../auth/auth';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Mimic API thread response latency
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      // Execute the authenticated session sequence with your FastAPI router
+      const response = await api.post('/api/auth/login', {
+        email,
+        password,
+      });
+
+      // Verification Success: The backend already set your secure HttpOnly cookies in response headers!
+      // Navigate your authenticated developer straight to their interactive workspace
+      navigate('/workspace');
+    } catch (err: any) {
+      // Safe validation mapping - extracts detail strings directly from FastAPI validation exceptions
+      const errorMessage = err.response?.data?.detail || "Could not complete authentication. Please verify credentials.";
+      setError(errorMessage);
+    } finally {
       setLoading(false);
-      alert("Authentication payload handled! Route to interactive workspace next.");
-    }, 1200);
+    }
   };
 
   return (
@@ -34,6 +50,14 @@ export default function SignIn() {
           <h3 className="text-xl font-bold text-white tracking-tight">Welcome Back</h3>
           <p className="text-xs text-slate-500">Resume your technical interview assessment track</p>
         </div>
+
+        {/* PREMIUM ERROR ALERT CONTAINER (Replacing raw alert() modals) */}
+        {error && (
+          <div className="mb-6 flex items-start gap-2.5 p-3.5 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span className="font-medium leading-relaxed">{error}</span>
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <Input 

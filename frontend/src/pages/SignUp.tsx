@@ -1,23 +1,41 @@
 import React, { useState } from 'react';
-import { Terminal, ArrowLeft } from 'lucide-react';
+import { Terminal, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
+import api from '../auth/auth';
 
 export default function SignUp() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      // Connects directly to our /signup endpoint
+      console.log(email)
+      await api.post('/api/auth/signup', {
+        email,
+        password,
+        full_name: name,
+      });
+
+      // Signup Success: Your endpoint signs and returns session cookies instantly.
+      // Route the user straight into the dashboard workspace
+      navigate('/workspace');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.detail || "Could not register account. Please check your data parameters.";
+      setError(errorMessage);
+    } finally {
       setLoading(false);
-      alert("Registration cluster initialized! Let's wire up your parameters.");
-    }, 1400);
+    }
   };
 
   return (
@@ -34,6 +52,14 @@ export default function SignUp() {
           <h3 className="text-xl font-bold text-white tracking-tight">Initialize Training</h3>
           <p className="text-xs text-slate-500">Create your environment profiles to start</p>
         </div>
+
+        {/* IN-APP ALERT FRAME (Replaces blocky web modal alerts) */}
+        {error && (
+          <div className="mb-6 flex items-start gap-2.5 p-3.5 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span className="font-medium leading-relaxed">{error}</span>
+          </div>
+        )}
 
         <form onSubmit={handleRegister} className="space-y-4">
           <Input 
