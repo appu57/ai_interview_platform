@@ -5,6 +5,7 @@ import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 // 1. Import your secure WorkspaceHome dashboard component
 import WorkspaceHome from './pages/WorkHomePage'; 
+import InterviewSetup from './pages/Interview';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         
         {/* 2. Register the secure /workspace route */}
         <Route path="/workspace" element={<WorkspaceHome />} />
+        <Route path="/workspace/interview-mode" element={<InterviewSetup />} />
       </Routes>
     </BrowserRouter>
   );

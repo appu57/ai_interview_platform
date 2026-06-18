@@ -25,3 +25,5 @@ node_modules/
 *.rpm
 *.msi
 *.exe
+
+unsloth_compiled_cache
