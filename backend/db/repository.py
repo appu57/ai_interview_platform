@@ -1,10 +1,10 @@
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict, Any, Literal, List
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from backend.db.models import User
+from backend.db.models import User, InterviewSession, ConversationalMessages,UserAnalyticsLedger
 
 class UserRepository:
     def __init__(self, session:AsyncSession):
@@ -19,7 +19,7 @@ class UserRepository:
     ) -> User:
         """Create a new user."""
         user = User(
-            id=str(uuid.uuid4()),
+            id=uuid.uuid4(),
             email=email.lower().strip(),
             hashed_password=hashed_password,
             full_name=full_name,
@@ -73,3 +73,133 @@ class UserRepository:
             select(User.id).where(User.email == email.lower().strip())
         )
         return result.scalar_one_or_none() is not None
+
+
+
+class SessionRepository: 
+    def __init__(self, session: AsyncSession):
+        self.session = session
+    
+    async def create(
+        self,
+        user_id: uuid.UUID,
+        setup_payload: Dict[str,Any],
+        mode: Literal["interview", "tutor"],
+        rounds_blueprint:Dict[str, Any]
+    )-> InterviewSession:
+        """Create a new Interview session using inputs sent 
+        by langgraph
+        rounds_blueprint: How each rounds of an interview is strategised"""
+
+        new_session = InterviewSession(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            job_title=setup_payload.get("job_title", "Software Engineer"),
+            experience_level=setup_payload.get("experience_level", "Senior"),
+            tech_stack=setup_payload.get("tech_stack", []),
+            target_company=setup_payload.get("target_company"),
+            difficulty=setup_payload.get("difficulty", "Rigorous (FAANG Style)"),
+            voice_model=setup_payload.get("voice_model", "Kore"),
+            interviewer_personality=setup_payload.get("interviewer_personality", "Balanced"),
+            preferred_language=setup_payload.get("preferred_language", "Python"),
+            status="active",
+            rounds_blueprint=rounds_blueprint if mode == "interview" else {"tutor_mode": True}
+        )
+        self.session.add(new_session)
+        await self.session.flush()
+        return new_session
+        
+
+class ConversationRepository: 
+    def __init__(self, session: AsyncSession):
+        self.session = session
+    
+    async def create(
+        self,
+        session_id: uuid.UUID,
+        round_index: int,
+        role: Literal["interviewer", "candidate"],
+        message_text: str,
+        audio_path: Optional[str] = None,
+        ai_feedback_correction: Optional[str] = None
+    )-> ConversationalMessages:
+        """Create a new Interview session using inputs sent 
+        by langgraph
+        rounds_blueprint: How each rounds of an interview is strategised"""
+
+        new_message = ConversationalMessages(
+            id=uuid.uuid4(),
+            session_id=session_id,
+            round_index=round_index,
+            role=role,
+            message_text=message_text,
+            audio_path=audio_path,
+            ai_feedback_correction=ai_feedback_correction
+        )
+        self.session.add(new_message) #after add I am not using commit or rollback because db_initialiser session factory already handles that
+        await self.session.flush()
+        return new_message
+    
+
+class LedgerRepository: 
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def create(
+        self,
+        user_id: uuid.UUID,
+        new_strengths: List[str],
+        new_weaknesses: List[str],
+        session_score:int,
+        behavioral_notes:Optional[str]
+    )->UserAnalyticsLedger:
+        query = select(UserAnalyticsLedger).where(UserAnalyticsLedger.user_id == user_id)
+        result = await self.session.execute(query)
+        ledger = result.scalar_one_or_none()
+        
+        if not ledger:
+            #If no ledger exists, create a clean initial entry
+            ledger = UserAnalyticsLedger(
+                id=uuid.uuid4(),
+                user_id=user_id,
+                strengths=new_strengths,
+                weaknesses=new_weaknesses,
+                historical_average_score=session_score,
+                behavioral_notes=behavioral_notes
+            )
+            self.session.add(ledger)
+        else:
+            #Update the existing ledger card dynamically
+            # Merge strengths and weaknesses, keeping lists completely unique using set logic
+            ledger.strengths = list(set(ledger.strengths + new_strengths))
+            ledger.weaknesses = list(set(ledger.weaknesses + new_weaknesses))
+            
+            ledger.historical_average_score = (ledger.historical_average_score + session_score) / 2.0
+            
+            if behavioral_notes:
+                ledger.behavioral_notes = behavioral_notes
+                
+            ledger.updated_at = datetime.now(UTC)
+
+        await self.session.flush()
+        return ledger
+    
+    async def close_session(
+        self,
+        db: AsyncSession,
+        session_id: uuid.UUID,
+        overall_score: int,
+        performance_overview: str
+    ):
+        query = select(InterviewSession).where(InterviewSession.id == session_id)
+        result = await self.session.execute(query)
+        session_obj = result.scalar_one_or_none()
+        
+        if session_obj:
+            session_obj.status = "completed"
+            session_obj.overall_score = overall_score
+            session_obj.performance_overview = performance_overview
+            session_obj.updated_at = datetime.now(UTC)
+            await self.session.flush()
+        return session_obj
+        
