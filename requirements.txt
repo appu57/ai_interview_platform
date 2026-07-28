@@ -1,22 +1,91 @@
-trl 
-peft 
-accelerate 
-bitsandbytes 
+# --- Deep Learning & Fine-Tuning Core Stack ---
+# Allowing uv to choose the most stable 2026 matching versions
+unsloth
+unsloth_zoo
+transformers>=4.51.3,<5.0.0
+trl
+peft
+accelerate==0.34.2
+bitsandbytes
 datasets
-huggingface_hub
-ipykernel
-datasets 
-pandas 
-requests 
-beautifulsoup4
-groq
-dotenv
+huggingface_hub>=0.34.0
+wandb
+
+# --- App Infrastructure, Engine & Database Layer ---
 fastapi
-sqlalchemy 
-asyncpg 
-pgvector 
-pydantic-settings
-bcrypt
 uvicorn
-pydantic[email] #validators
+pydantic[email]
+pydantic-settings
+sqlalchemy>=2.0.0
+asyncpg
+pgvector
+bcrypt
 pyjwt>=2.13.0
+dotenv
+groq
+langgraph
+# --- Parsing & Data Tools ---
+pandas
+requests
+beautifulsoup4
+ipykernel
+numpy
+python-multipart
+tavily
+tavily-python
+pypdf
+
+#--- Voice requisites --- 
+torch
+torchaudio 
+openai-whisper 
+gtts 
+livekit
+livekit-agents
+livekit-plugins-silero
+livekit-plugins-deepgram
+livekit-plugins-openai
+livekit-plugins-cartesia
+faster-whisper==1.2.1
+livekit-plugins-groq 
+edge-tts
+# livekit-plugins-ollama we can use ollama as well
+
+
+#---RAG and Knowledge graph
+chromadb 
+sentence-transformers 
+neo4j
+spacy 
+# spacy-transformers
+# https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl
+umap-learn
+hdbscan
+# python -m spacy download en_core_web_trf
+
+
+langgraph-checkpoint-postgres
+psycopg[binary]
+psycopg_pool
+
+asyncpg
+alembic
+pydub
+
+
+# YouTube transcript extraction
+youtube-transcript-api>=0.6.2
+
+# Article/blog extraction (much better than raw BeautifulSoup for web content)
+trafilatura>=1.8.0
+
+# DOCX support (optional — only needed if we want .docx file uploads)
+mammoth>=1.6.0
+yt-dlp 
+opencv-python
+
+qdrant-client 
+ragas 
+datasets 
+sentence-transformers
+scikit-learn

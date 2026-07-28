@@ -38,10 +38,26 @@
 # echo "Binaries available at: llama.cpp/llama-quantize, llama.cpp/llama-imatrix, etc."
 
 
+# set -e
+ 
+# MERGED_MODEL_DIR="${1:-finetune/merged/merged_model_v2}"
+# OUTPUT_GGUF="${2:-finetune/gguf/model-f16.gguf}"
+ 
+# mkdir -p "$(dirname "$OUTPUT_GGUF")"
+ 
+# python llama.cpp/convert_hf_to_gguf.py \
+#     "$MERGED_MODEL_DIR" \
+#     --outfile "$OUTPUT_GGUF" \
+#     --outtype f16
+ 
+# echo "GGUF conversion complete: $OUTPUT_GGUF"
+# echo "Next: ./quantize.sh $OUTPUT_GGUF"
+ 
+
 set -e
  
-MERGED_MODEL_DIR="${1:-finetune/merged/merged_model_v2}"
-OUTPUT_GGUF="${2:-finetune/gguf/model-f16.gguf}"
+MERGED_MODEL_DIR="${1:-finetune/merged/merged_model_with_eos}"
+OUTPUT_GGUF="${2:-finetune/gguf/model-retrain-f16.gguf}"
  
 mkdir -p "$(dirname "$OUTPUT_GGUF")"
  

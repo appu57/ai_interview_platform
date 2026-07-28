@@ -8,11 +8,11 @@
 
 set -e
 
-F16_GGUF="${1:-finetune/gguf/model-f16.gguf}"
+F16_GGUF="${1:-finetune/gguf/model-retrain-f16.gguf}"
 CALIBRATION_DATA="${2:-llama.cpp/calibration_data.txt}"
 OUT_DIR="$(dirname "$F16_GGUF")"
 IMATRIX_OUT="$OUT_DIR/imatrix.dat"
-Q4_OUT="$OUT_DIR/model-Q4_K_M.gguf"
+Q4_OUT="$OUT_DIR/model-retrain-Q4_K_M.gguf"
 
 if [ ! -f "$CALIBRATION_DATA" ]; then
     echo "Calibration data not found at $CALIBRATION_DATA"

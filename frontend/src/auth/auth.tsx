@@ -4,7 +4,6 @@ import axios from 'axios';
 // We point this to your local or production FastAPI backend address
 const api = axios.create({
   baseURL: 'http://localhost:8000',
-  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -12,9 +11,14 @@ const api = axios.create({
   // your HttpOnly secure session cookies (access_token & refresh_token)
   withCredentials: true,
 });
-
-// 2. RESPONSE INTERCEPTOR (The Session Guard)
-api.interceptors.response.use(
+api.interceptors.request.use((config) => {
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
+  return config;
+});
+// 2. RESPONSE INTERCEPTOR (The Session Guard) 
+api.interceptors.response.use( //accepts two parameters fulfilled and rejected
   (response) => {
     return response;
   },

@@ -1,11 +1,3 @@
-"""
-build_calibration_data.py - Extract plain text from your training data to
-use as imatrix calibration data, instead of llama.cpp's generic default
-calibration text. Using domain-specific calibration data (your own DSA/
-system-design Q&A) means the quantizer prioritizes precision for the
-token patterns that actually matter for your use case.
-
-"""
 import json
 
 TRAIN_PATH = "finetune/dataset/train.jsonl"

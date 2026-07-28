@@ -86,9 +86,9 @@ def variant_full_walkthrough(entry: dict) -> dict:
     human = entry["question"]
     gpt = build_full_explanation(entry)  # full content, no truncation
     return {"conversations": [
-        {"from": "system", "value": TUTOR_SYSTEM_PROMPT},
-        {"from": "human", "value": human},
-        {"from": "gpt", "value": gpt},
+        {"role": "system", "content": TUTOR_SYSTEM_PROMPT},
+        {"role": "user", "content": human},
+        {"role": "assistant", "content": gpt},
     ]}
 
 
@@ -101,9 +101,9 @@ def variant_quick_doubt(entry: dict) -> dict:
     if not gpt.strip():
         return None
     return {"conversations": [
-        {"from": "system", "value": TUTOR_SYSTEM_PROMPT},
-        {"from": "human", "value": human},
-        {"from": "gpt", "value": gpt},
+        {"role": "system", "content": TUTOR_SYSTEM_PROMPT},
+        {"role": "user", "content": human},
+        {"role": "assistant", "content": gpt},
     ]}
 
 
@@ -116,9 +116,9 @@ def variant_complexity_followup(entry: dict) -> dict:
     if not gpt.strip():
         return None
     return {"conversations": [
-        {"from": "system", "value": TUTOR_SYSTEM_PROMPT},
-        {"from": "human", "value": human},
-        {"from": "gpt", "value": gpt},
+        {"role": "system", "content": TUTOR_SYSTEM_PROMPT},
+        {"role": "user", "content": human},
+        {"role": "assistant", "content": gpt},
     ]}
 
 
@@ -129,9 +129,9 @@ def variant_mistake_check(entry: dict) -> dict:
     human = f"What do people usually mess up when solving: {entry['question']}"
     gpt = truncate(mistakes, max_words=200)
     return {"conversations": [
-        {"from": "system", "value": TUTOR_SYSTEM_PROMPT},
-        {"from": "human", "value": human},
-        {"from": "gpt", "value": gpt},
+        {"role": "system", "content": TUTOR_SYSTEM_PROMPT},
+        {"role": "user", "content": human},
+        {"role": "assistant", "content": gpt},
     ]}
 
 
@@ -150,9 +150,9 @@ def variant_wrong_approach_correction(entry: dict) -> dict:
         max_words=250,
     )
     return {"conversations": [
-        {"from": "system", "value": TUTOR_SYSTEM_PROMPT},
-        {"from": "human", "value": human},
-        {"from": "gpt", "value": gpt},
+        {"role": "system", "content": TUTOR_SYSTEM_PROMPT},
+        {"role": "user", "content": human},
+        {"role": "assistant", "content": gpt},
     ]}
 
 
@@ -167,8 +167,8 @@ VARIANT_FNS = [
 def is_valid(example: dict) -> bool:
     if example is None:
         return False
-    gpt_turn = next(t for t in example["conversations"] if t["from"] == "gpt")
-    word_count = len(gpt_turn["value"].split())
+    gpt_turn = next(t for t in example["conversations"] if t["role"] == "assistant")
+    word_count = len(gpt_turn["content"].split())
     if word_count < 15:
         return False  # too short, likely an empty extracted section / parsing failure
     return True
@@ -228,7 +228,7 @@ def load_raw_entries(path: str) -> list[dict]:
     entries = []
     all_lines_parsed = True
     for line in content.splitlines():
-        line = line.strip().rstrip(",")  # tolerate trailing commas from array-style paste
+        line = line.strip().rstrip(",") 
         if not line:
             continue
         try:
@@ -247,7 +247,6 @@ def load_raw_entries(path: str) -> list[dict]:
     idx = 0
     text_len = len(text)
     while idx < text_len:
-        # skip whitespace and stray commas/brackets between objects
         while idx < text_len and text[idx] in " \t\n\r,[]":
             idx += 1
         if idx >= text_len:
@@ -347,11 +346,11 @@ def main():
 
     oversized = []
     for ex in all_examples:
-        gpt_turn = next(t for t in ex["conversations"] if t["from"] == "gpt")
-        tok_est = estimate_tokens(gpt_turn["value"])
+        gpt_turn = next(t for t in ex["conversations"] if t["role"] == "assistant")
+        tok_est = estimate_tokens(gpt_turn["content"])
         if tok_est > 1500:
-            human_turn = next(t for t in ex["conversations"] if t["from"] == "human")
-            oversized.append({"question": human_turn["value"][:80], "estimated_tokens": tok_est})
+            human_turn = next(t for t in ex["conversations"] if t["role"] == "user")
+            oversized.append({"question": human_turn["content"][:80], "estimated_tokens": tok_est})
 
     if oversized:
         print(f"\n  {len(oversized)} examples estimate OVER ~1500 tokens "

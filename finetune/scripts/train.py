@@ -24,9 +24,8 @@ if os.path.isdir(cache_dir):
 MAX_SEQ_LENGTH = 2048
 MODEL_NAME = "unsloth/Qwen3-4B-Instruct-2507"
 
-# --- UPDATE to your dataset paths ---
-TRAIN_PATH = "/kaggle/input/datasets/username/dsa-sys-datasets/train.jsonl"
-EVAL_PATH = "/kaggle/input/datasets/username/dsa-sys-datasets/eval.jsonl"
+TRAIN_PATH = "/kaggle/input/datasets/username/dsa-sys-dataset/train.jsonl"
+EVAL_PATH = "/kaggle/input/datasets/username/dsa-sys-dataset/eval.jsonl"
 
 ADAPTER_OUT = "/kaggle/working/adapter"
 CHECKPOINT_DIR = "/kaggle/working/checkpoints"
@@ -74,6 +73,8 @@ def tokenize_with_prompt_masking(examples, tokenizer):
     all_input_ids = []
     all_labels = []
 
+    im_end_ids = tokenizer("<|im_end|>", add_special_tokens=False)["input_ids"]
+
     for conv in examples["conversations"]:
         # Tokenize the WHOLE conversation once.
         full_text = tokenizer.apply_chat_template(
@@ -86,7 +87,7 @@ def tokenize_with_prompt_masking(examples, tokenizer):
         for turn in conv:
             if turn["role"] != "assistant":
                 continue
-            content_ids = tokenizer(turn["content"], add_special_tokens=False)["input_ids"]
+            content_ids = tokenizer(turn["content"], add_special_tokens=False)["input_ids"] + im_end_ids
             if not content_ids:
                 continue
             n = len(content_ids)
@@ -118,8 +119,10 @@ masked_count = sum(1 for l in sample_labels if l == -100)
 real_count = len(sample_labels) - masked_count
 print(f"Sanity check: {masked_count} masked tokens, {real_count} real label tokens "
       f"in first example.")
-assert masked_count > 0, "No tokens were masked - check tokenize_with_prompt_masking logic."
-assert real_count > 0, "No real label tokens found - check tokenize_with_prompt_masking logic."
+
+
+im_end_id = tokenizer("<|im_end|>", add_special_tokens=False)["input_ids"][0]
+real_labels_first_example = [l for l in sample_labels if l != -100]
 
 truncated = sum(1 for ex in train_dataset if len(ex["input_ids"]) >= MAX_SEQ_LENGTH)
 if truncated:

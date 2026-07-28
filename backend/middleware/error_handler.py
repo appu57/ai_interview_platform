@@ -9,7 +9,6 @@ from backend.core.security import get_settings
 
 logger = logging.getLogger(__name__)
 
-# Error messages that are safe to expose in production
 SAFE_ERROR_MESSAGES = {
     400: "Bad request",
     401: "Invalid credentials",
@@ -27,14 +26,12 @@ SAFE_ERROR_MESSAGES = {
 
 
 def _is_production() -> bool:
-    """Check if running in production environment."""
     settings = get_settings()
     environment = getattr(settings, "environment", "development")
     return str(environment).strip().lower() == "production"
 
 
 def _get_request_id(request: Request) -> str:
-    """Extract request ID from request state."""
     return getattr(request.state, "request_id", "unknown")
 
 
@@ -44,21 +41,15 @@ def _sanitize_error_detail(
     is_production: bool,
 ) -> Any:
 
-    # Preserve structured detail objects (dicts) - these are intentionally formatted
-    # by the endpoint for user-facing error messages
     if isinstance(detail, dict):
         return detail
 
     if not is_production:
-        # Development: return actual detail
         if isinstance(detail, str):
             return detail
         return str(detail)
 
-    # Production: return safe generic message
-    # Allow specific HTTPException details that are intentionally user-facing
     if isinstance(detail, str):
-        # Check if this looks like a user-facing validation error
         safe_prefixes = (
             "Missing",
             "Invalid",
@@ -82,17 +73,10 @@ def _build_error_response(
     errors: Optional[list[dict[str, Any]]] = None,
     wrap_detail: bool = True,
 ) -> dict[str, Any]:
-    """
-    Build consistent error response structure.
-
-    When detail is already a dict (structured error from endpoint), it's preserved as-is
-    in the 'detail' field for backward compatibility with existing API consumers.
-    """
     response: dict[str, Any] = {
         "detail": detail,
     }
 
-    # Only add extra fields if detail is not already structured
     if not isinstance(detail, dict):
         response["status_code"] = status_code
         response["request_id"] = request_id
@@ -103,15 +87,10 @@ def _build_error_response(
 
 
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
-    """
-    Handle HTTPException with sanitization.
 
-    Logs the error with full context and returns sanitized response.
-    """
     request_id = _get_request_id(request)
     is_production = _is_production()
 
-    # Log the actual error for debugging
     logger.warning(
         "HTTP exception",
         extra={
@@ -145,14 +124,8 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
 
 async def validation_exception_handler(request: Request, exc: ValidationError) -> JSONResponse:
-    """
-    Handle Pydantic ValidationError with structured error details.
-
-    Validation errors are generally safe to expose as they relate to input format.
-    """
     request_id = _get_request_id(request)
 
-    # Extract validation errors
     errors = []
     for error in exc.errors():
         errors.append(
@@ -188,15 +161,9 @@ async def validation_exception_handler(request: Request, exc: ValidationError) -
 
 
 async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """
-    Handle unexpected exceptions with full sanitization.
-
-    Logs the full traceback but returns sanitized response.
-    """
     request_id = _get_request_id(request)
     is_production = _is_production()
 
-    # Log the full error with traceback for debugging
     logger.error(
         "Unhandled exception",
         extra={
@@ -210,11 +177,9 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
         exc_info=True,
     )
 
-    # Build response
     if is_production:
         detail = SAFE_ERROR_MESSAGES[500]
     else:
-        # Include more detail in development
         detail = f"{type(exc).__name__}: {str(exc)}"
 
     response_body = _build_error_response(
@@ -230,12 +195,6 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
 
 
 def add_error_handlers(app: FastAPI) -> None:
-    """
-    Add centralized error handlers to the FastAPI application.
-
-    Args:
-        app: FastAPI application instance
-    """
     app.add_exception_handler(HTTPException, http_exception_handler)  # type: ignore[arg-type]
     app.add_exception_handler(ValidationError, validation_exception_handler)  # type: ignore[arg-type]
     app.add_exception_handler(Exception, general_exception_handler)

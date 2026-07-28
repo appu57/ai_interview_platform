@@ -87,9 +87,6 @@ class SessionRepository:
         mode: Literal["interview", "tutor"],
         rounds_blueprint:Dict[str, Any]
     )-> InterviewSession:
-        """Create a new Interview session using inputs sent 
-        by langgraph
-        rounds_blueprint: How each rounds of an interview is strategised"""
 
         new_session = InterviewSession(
             id=uuid.uuid4(),
@@ -139,6 +136,34 @@ class ConversationRepository:
         self.session.add(new_message) #after add I am not using commit or rollback because db_initialiser session factory already handles that
         await self.session.flush()
         return new_message
+    
+    async def bulk_create_messages(
+        self,
+        session_id: uuid.UUID,
+        round_index: int,
+        messages: List[Dict[str, Any]],
+    ) -> List[ConversationalMessages]:
+        
+        role_map = {"assistant": "interviewer", "user": "candidate"}
+ 
+        created: List[ConversationalMessages] = []
+        for msg in messages:
+            mapped_role = role_map.get(msg.get("role"), msg.get("role"))
+            new_message = ConversationalMessages(
+                id=uuid.uuid4(),
+                session_id=session_id,
+                round_index=round_index,
+                role=mapped_role,
+                message_text=msg.get("content", ""),
+                audio_path=msg.get("audio_path"),
+                ai_feedback_correction=msg.get("correction"),
+            )
+            self.session.add(new_message)
+            created.append(new_message)
+ 
+        await self.session.flush()
+        return created
+
     
 
 class LedgerRepository: 
@@ -202,4 +227,12 @@ class LedgerRepository:
             session_obj.updated_at = datetime.now(UTC)
             await self.session.flush()
         return session_obj
+    
+    async def get_historical_performance(self,user_id: uuid.UUID)-> UserAnalyticsLedger:
+        result = await self.session.execute(
+        select(UserAnalyticsLedger).where(UserAnalyticsLedger.user_id == user_id)
+        )
+        ledger = result.scalar_one_or_none()
+        return ledger
+
         

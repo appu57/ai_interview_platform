@@ -67,11 +67,6 @@ class CsrfMiddleware(BaseHTTPMiddleware):
     
 
 def add_csrf_middleware(app:FastAPI) -> None:
-    """Add CSRF middleware to the FastAPI application.
-
-    Args:
-        app: FastAPI application instance
-    """
     app.add_middleware(CsrfMiddleware)
     logger.info("CSRF middleware added to application")
 

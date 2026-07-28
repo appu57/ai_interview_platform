@@ -17,10 +17,9 @@ import {
   Play,
   RotateCcw
 } from 'lucide-react';
+import api from '../auth/auth';
 
-// =====================================================================
-// --- TYPE DEFINITIONS ---
-// =====================================================================
+
 interface InterviewRound {
   id: string;
   type: string;
@@ -33,9 +32,19 @@ interface CompanyTemplates {
   [key: string]: InterviewRound[];
 }
 
-// =====================================================================
-// --- CONSTANTS & CONFIGURATIONS ---
-// =====================================================================
+interface SavePreferencesResponse {
+  status: string;
+  message: string;
+  session_id: string;
+  rounds_blueprint: { rounds: InterviewRound[] };
+  first_agent_question?: string | null;
+  oa_problem?: Record<string, unknown> | null;
+  round_turn_count?: number;
+  overall_score?: unknown;
+  performance_overview?: unknown;
+}
+
+
 const COMPANY_TEMPLATES: CompanyTemplates = {
   Google: [
     { id: '1', type: 'OA', name: 'Online Coding Assessment', duration: '45 mins', desc: 'Algorithmic efficiency & data structures focus.' },
@@ -56,8 +65,8 @@ const COMPANY_TEMPLATES: CompanyTemplates = {
 };
 
 const DEFAULT_ROUNDS: InterviewRound[] = [
-  { id: '1', type: 'Tech_DSA', name: 'Technical Round 1: DSA & Logic', duration: '45 mins', desc: 'Core computer science fundamentals.' },
-  { id: '2', type: 'Behavioral', name: 'HR & Behavioral Round', duration: '30 mins', desc: 'Soft skills, communication & background validation.' }
+  { id: '1', type: 'OA', name: 'Online Coding Assessment', duration: '15 mins', desc: 'Algorithmic efficiency & data structures focus.' },
+  { id: '2', type: 'Behavioral', name: 'HR & Behavioral Round', duration: '15 mins', desc: 'Soft skills, communication & background validation.' }
 ];
 
 const PRESET_TECH_STACKS = [
@@ -72,23 +81,24 @@ const AVAILABLE_VOICES = [
   { name: "Leda", desc: "Engaging & Conversational" }
 ];
 
+
+const DURATION_OPTIONS = ["1 min","10 mins","15 mins", "30 mins", "45 mins", "60 mins", "75 mins", "90 mins"];
+
 export default function InterviewSetup() {
   const navigate = useNavigate();
 
-  // --- STATE FOR SETUP FORM ---
   const [jobTitle, setJobTitle] = useState('Senior Full Stack Engineer');
   const [experienceLevel, setExperienceLevel] = useState('Senior');
   const [targetCompany, setTargetCompany] = useState('');
   const [customRounds, setCustomRounds] = useState<InterviewRound[]>(DEFAULT_ROUNDS);
   
-  // Tech stack state
   const [techStack, setTechStack] = useState<string[]>(["React", "Python", "PostgreSQL", "FastAPI"]);
   const [currentTechInput, setCurrentTechInput] = useState('');
   
   // Auxiliary items
-  const [githubUrl, setGithubUrl] = useState('');
   const [difficulty, setDifficulty] = useState('Rigorous (FAANG Style)');
-  const [voiceModel, setVoiceModel] = useState('Kore');
+
+  const [voiceModel, setVoiceModel] = useState(AVAILABLE_VOICES[0].name);
   const [interviewerPersonality, setInterviewerPersonality] = useState('Balanced');
   const [selectedLanguage, setSelectedLanguage] = useState('Python');
 
@@ -96,11 +106,18 @@ export default function InterviewSetup() {
   const [resumeName, setResumeName] = useState<string | null>(null);
   const [resumeText, setResumeText] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
 
   // Simulation controls
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchStep, setLaunchStep] = useState(0);
   const [simulationComplete, setSimulationComplete] = useState(false);
+  const [livekitToken, setLivekitToken] = useState("");
+
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [oaProblem, setOaProblem] = useState<Record<string, unknown> | null>(null);
+  const [firstAgentQuestion, setFirstAgentQuestion] = useState<string | null>(null);
+  const [setupError, setSetupError] = useState<string | null>(null);
 
   // Auto-populate company templates when company input matches preset keys
   useEffect(() => {
@@ -130,13 +147,13 @@ export default function InterviewSetup() {
   const handleAddRound = (type: string) => {
     let name = "Custom Interview Round";
     let desc = "Curated AI engineering validation round.";
-    let duration = "45 mins";
+    let duration = "10 mins";
 
     if (type === "Tech_DSA") { name = "Data Structures & Algorithms"; desc = "Algorithmic thinking & code efficiency." }
-    else if (type === "Sys_Design") { name = "System Design & Architecture"; desc = "Designing distributed, resilient applications."; duration = "60 mins" }
+    else if (type === "Sys_Design") { name = "System Design & Architecture"; desc = "Designing distributed, resilient applications."; duration = "15 mins" }
     else if (type === "Behavioral") { name = "Behavioral & Cultural Fit"; desc = "Past situations, handling conflicts & core motivations." }
     else if (type === "OA") { name = "Online Coding Challenge (OA)"; desc = "Asynchronous algorithmic assessments." }
-    else if (type === "HR") { name = "HR Screening & Background Check"; desc = "Salary expectations, logistics and cultural checks."; duration = "30 mins" }
+    else if (type === "HR") { name = "HR Screening & Background Check"; desc = "Salary expectations, logistics and cultural checks."; duration = "15 mins" }
 
     const newRound: InterviewRound = {
       id: Date.now().toString(),
@@ -150,6 +167,12 @@ export default function InterviewSetup() {
 
   const handleRemoveRound = (id: string) => {
     setCustomRounds(customRounds.filter(round => round.id !== id));
+  };
+
+  const handleUpdateRoundDuration = (id: string, duration: string) => {
+    setCustomRounds(customRounds.map(round =>
+      round.id === id ? { ...round, duration } : round
+    ));
   };
 
   // Drag and drop resume handlers
@@ -167,7 +190,7 @@ export default function InterviewSetup() {
     setIsDragging(false);
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      setResumeName(files[0].name);
+      setResumeFile(files[0]); // Storing the File object
     }
   };
 
@@ -175,12 +198,77 @@ export default function InterviewSetup() {
     const files = e.target.files;
     if (files && files.length > 0) {
       setResumeName(files[0].name);
+      setResumeFile(files[0]);
     }
   };
 
-  // Launching simulation steps
-  const triggerSimulation = () => {
+
+  const savePreferences = async (): Promise<boolean> => {
+    const formData = new FormData();
+  
+    if (resumeFile) {
+      formData.append('resume', resumeFile);
+    }
+    const userId = localStorage.getItem('user');
+
+    const preferences = {
+      jobTitle,
+      experienceLevel,
+      targetCompany,
+      customRounds,
+      techStack,
+      difficulty,
+      voiceModel,
+      interviewerPersonality,
+      selectedLanguage,
+      userId
+    };
+  
+    formData.append('preferences', JSON.stringify(preferences));
+  
+    try {
+      const response = await api.post('/api/user_preferences/save_preferences', formData);
+      const data: SavePreferencesResponse = response.data;
+
+      if (!data.session_id) {
+        throw new Error('Server response did not include a session_id.');
+      }
+
+      setSessionId(data.session_id);
+      setOaProblem(data.oa_problem ?? null);
+      setFirstAgentQuestion(data.first_agent_question ?? null);
+
+      const tokenResponse = await api.get(`/api/webrtc/token/${data.session_id}`, {
+        params: {
+          mode: 'interview' // This sends ?mode=tutor to FastAPI
+        }
+      });
+      const token = tokenResponse.data.token;
+      setLivekitToken(token);
+
+      return true;
+    } catch (error: any) {
+      console.error("Error saving preferences:", error);
+      setSetupError(
+        error?.response?.data?.detail ||
+        error?.message ||
+        'Failed to configure the interview sandbox. Please try again.'
+      );
+      return false;
+    }
+  };
+  
+
+  const triggerSimulation = async () => {
     setIsLaunching(true);
+    setSetupError(null);
+
+    const ok = await savePreferences();
+    if (!ok) {
+      setIsLaunching(false);
+      return;
+    }
+
     setLaunchStep(1);
 
     const stages = [
@@ -210,7 +298,10 @@ export default function InterviewSetup() {
     setCustomRounds(DEFAULT_ROUNDS);
     setResumeName(null);
     setResumeText('');
-    setGithubUrl('');
+    setSetupError(null);
+    setSessionId(null);
+    setOaProblem(null);
+    setFirstAgentQuestion(null);
   };
 
   return (
@@ -249,6 +340,12 @@ export default function InterviewSetup() {
       {/* MAIN CONTAINER */}
       {!isLaunching ? (
         <main className="max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
+
+          {setupError && (
+            <div className="lg:col-span-12 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-mono px-4 py-3 rounded-lg">
+              {setupError}
+            </div>
+          )}
           
           {/* LEFT SIDE: CONFIGURATION COLUMN */}
           <section className="lg:col-span-7 space-y-6">
@@ -374,21 +471,6 @@ export default function InterviewSetup() {
                     onChange={(e) => setTargetCompany(e.target.value)}
                     className="w-full bg-[#0A0B0D] border border-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-4 py-2.5 text-xs text-slate-100 placeholder-slate-600 transition"
                     placeholder="e.g. Google, Meta, Stripe"
-                  />
-                </div>
-
-                {/* GitHub Public Link */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-mono text-slate-300 flex items-center space-x-1.5">
-                    <Github className="h-3.5 w-3.5 text-slate-400" />
-                    <span>Public GitHub Repo Link</span>
-                  </label>
-                  <input 
-                    type="text" 
-                    value={githubUrl} 
-                    onChange={(e) => setGithubUrl(e.target.value)}
-                    className="w-full bg-[#0A0B0D] border border-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-4 py-2.5 text-xs text-slate-100 placeholder-slate-600 transition"
-                    placeholder="e.g. github.com/apoor/repo-name"
                   />
                 </div>
               </div>
@@ -570,7 +652,20 @@ export default function InterviewSetup() {
                         </div>
                         
                         <div className="flex items-center space-x-2">
-                          <span className="text-[9px] font-mono text-slate-500">{round.duration}</span>
+                      
+                          <select
+                            value={round.duration}
+                            onChange={(e) => handleUpdateRoundDuration(round.id, e.target.value)}
+                            aria-label={`Duration for ${round.name}`}
+                            className="text-[9px] font-mono text-slate-400 bg-[#050608] border border-slate-800 rounded px-1.5 py-0.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition cursor-pointer hover:border-slate-700 hover:text-white"
+                          >
+                            {!DURATION_OPTIONS.includes(round.duration) && (
+                              <option value={round.duration}>{round.duration}</option>
+                            )}
+                            {DURATION_OPTIONS.map((opt) => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
                           <button 
                             onClick={() => handleRemoveRound(round.id)}
                             className="text-slate-600 hover:text-red-400 transition-colors"
@@ -727,8 +822,19 @@ export default function InterviewSetup() {
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button 
-                  onClick={() => alert("Starting Mock Interview Simulation with Audio Interface Enabled...")}
-                  className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg shadow-indigo-500/10 transition-all text-xs font-mono flex items-center justify-center space-x-2"
+                  onClick={() => {
+                    navigate(`/workspace/mock-interview`, {
+                      state: {
+                        token: livekitToken,
+                        sessionId: sessionId,
+                        oa_problem: oaProblem,
+                        first_agent_question: firstAgentQuestion,
+                        preferred_language: selectedLanguage,
+                      }
+                    });
+                  }}
+                  disabled={!sessionId || !livekitToken}
+                  className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg shadow-lg shadow-indigo-500/10 transition-all text-xs font-mono flex items-center justify-center space-x-2"
                 >
                   <Play className="h-3.5 w-3.5 fill-current" />
                   <span>Begin Simulation Now</span>

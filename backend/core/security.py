@@ -53,6 +53,40 @@ class SecretKeys(BaseModel):
         description="Maximum request size allowed in bytes (2 MB)"
     )
 
+    deepgram_api_key: str = Field(
+        default_factory= lambda: os.getenv("DEEPGRAM_API_KEY"),
+        description="DEEPGRAM_API_KEY"
+    )
+
+    tavily_api_key: str = Field(
+        default_factory= lambda: os.getenv("TAVILY_API_KEY"),
+        description="Web search API key"
+    )
+    
+    livekit_api_key: str = Field(
+        default_factory= lambda: os.getenv("LIVEKIT_API_KEY"),
+        description="DEEPGRAM_API_KEY"
+    )
+
+    livekit_secret_key: str = Field(
+        default_factory= lambda: os.getenv("LIVEKIT_API_SECRET"),
+        description="Maximum request size allowed in bytes (2 MB)"
+    )
+    livekit_url: str = Field(
+        default_factory= lambda: os.getenv("LIVEKIT_URL"),
+        description="Maximum request size allowed in bytes (2 MB)"
+    )
+
+    qdrant_api_key: str = Field(
+        default_factory= lambda: os.getenv("qdrant_api_key"),
+        description= "QDRANT API KEY"
+    )
+
+    qdrant_url: str = Field(
+        default_factory= lambda: os.getenv("qdrant_url"),
+        description= "QDRANT API KEY"
+    )
+
 # Global settings instance
 settings = SecretKeys()
 

@@ -62,7 +62,6 @@ def _set_auth_cookies(
     """Set authentication cookies on response."""
     settings = get_settings()
 
-    # Access token cookie (short-lived)
     access_max_age = settings.access_token_expire_minutes * 60
     response.set_cookie(
         key="access_token",
@@ -81,14 +80,13 @@ def _set_auth_cookies(
         samesite="strict",
     )
 
-    # CSRF token cookie (for double-submit pattern)
     if csrf_token:
         response.set_cookie(
             key="csrf_token",
             value=csrf_token,
             max_age=access_max_age,
             path="/",
-            httponly=False,  # Must be readable by JavaScript
+            httponly=False, 
             samesite="strict",
         )
 
@@ -109,7 +107,6 @@ async def login(
     user_repo = UserRepository(session)
     user = await user_repo.get_by_email(body.email)
     
-    # Generic failure message to prevent user enumeration attacks
     invalid_credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Incorrect email or password",
@@ -128,7 +125,7 @@ async def login(
         
     if needs_rehash(user.hashed_password):
         new_hash = hash_password(body.password)
-        await user_repo.set_password(user.id, new_hash) # Assumes method exists in your repo
+        await user_repo.set_password(user.id, new_hash)
 
     await user_repo.update_last_login(user)
     token_data = {"subject": user.email, "uid": str(user.id)}
@@ -195,12 +192,6 @@ async def get_current_user_profile(
     request: Request,
     session: AsyncSession = Depends(get_db)
 ):
-    """
-    Handshake Endpoint:
-    Allows our React WorkspaceHome page to safely request user data.
-    Our cookie parser checks the secure HttpOnly access_token claims,
-    while checking for the CSRF token to prevent request forgery.
-    """
     access_token = request.cookies.get("access_token")
     if not access_token:
         raise HTTPException(

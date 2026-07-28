@@ -27,3 +27,7 @@ node_modules/
 *.exe
 
 unsloth_compiled_cache
+backend/rag/knowledge_rag/knowledge_graph.md
+
+chroma_store
+logs

@@ -23,7 +23,8 @@ export default function SignIn() {
         email,
         password,
       });
-
+      const userData = response.data.user_id 
+      localStorage.setItem('user', userData);
       // Verification Success: The backend already set your secure HttpOnly cookies in response headers!
       // Navigate your authenticated developer straight to their interactive workspace
       navigate('/workspace');

@@ -25,6 +25,20 @@ export default function WorkspaceHome() {
   const [user, setUser] = useState<UserData | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [livekitToken, setLivekitToken] = useState("");
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [question, setQuestion] = useState<string | null>(null)
+  const [hints, setHints] = useState<string | null>(null)
+
+  // Tracks the in-flight /session -> /webrtc/token -> navigate chain.
+  // Drives a full-page overlay rather than just an inline card spinner,
+  // since question + hint generation can genuinely take a while (Groq
+  // question-gen call, then hints generation) and the user should see
+  // that clearly rather than staring at an unresponsive-looking card.
+  const [isLoadingTutorMode, setIsLoadingTutorMode] = useState(false);
+  const [tutorModeError, setTutorModeError] = useState<string | null>(null);
+  const [loadingStage, setLoadingStage] = useState<'question' | 'session' | null>(null);
+  
   const navigate = useNavigate();
 
   // Helper function to extract a specific cookie value from document.cookie
@@ -36,6 +50,57 @@ export default function WorkspaceHome() {
     }
     return null;
   };
+
+  const navigateToTutorMode = async () => {
+    if (isLoadingTutorMode) return false;
+
+    setIsLoadingTutorMode(true);
+    setTutorModeError(null);
+    setLoadingStage('question');
+
+    try {
+      const response = await api.get('api/system-design/session',
+        {
+          params: { user_id: user?.id },
+        }
+      );
+      const data = response.data;
+
+      if (!data.session_id) {
+        throw new Error('Server response did not include a session_id.');
+      }
+
+      setSessionId(data.session_id);
+      setQuestion(data?.question);
+      setHints(data?.hints)
+
+      setLoadingStage('session');
+      const tokenResponse = await api.get(`/api/webrtc/token/${data.session_id}`);
+      const token = tokenResponse.data.token;
+      setLivekitToken(token);
+      navigate('/workspace/mock-interview', {
+        state: {
+          token: token,
+          sessionId: data?.session_id,
+          question: data?.question,
+          hints:data?.hints,
+          mode:'tutor'
+        },
+      });
+
+      // Not resetting loading state here on purpose -- we're navigating
+      // away, so this component is about to unmount. Leaving the overlay
+      // up avoids a one-frame flash back to the idle page right before
+      // the route change takes effect.
+      return true;
+    } catch (error: any) {
+      console.error("Error saving preferences:", error);
+      setTutorModeError("Couldn't start tutor mode. Please try again.");
+      setIsLoadingTutorMode(false);
+      setLoadingStage(null);
+      return false;
+    }
+  }
 
   useEffect(() => {
     const verifySecurityContext = async () => {
@@ -74,6 +139,7 @@ export default function WorkspaceHome() {
     try {
       // Clear security tokens on backend
       await api.post('/api/auth/logout');
+      localStorage.removeItem("user")
     } catch (err) {
       console.error("Logout request failed:", err);
     } finally {
@@ -123,6 +189,35 @@ export default function WorkspaceHome() {
       {/* Background Decorative Mesh Glows */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-900/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-950/10 rounded-full blur-[120px] pointer-events-none" />
+
+      {/* FULL-PAGE LOADING OVERLAY -- shown while the tutor session's
+          question + hints are being generated. Fixed + high z-index so it
+          sits above the header, cards, and everything else without
+          unmounting the page underneath (avoids scroll-position jumps and
+          keeps the rest of the component tree mounted). */}
+      {isLoadingTutorMode && (
+        <div className="fixed inset-0 z-50 bg-[#0A0B0D]/95 backdrop-blur-md flex flex-col items-center justify-center space-y-5">
+          <div className="relative">
+            <Loader2 className="w-10 h-10 text-emerald-400 animate-spin" />
+            <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full" />
+          </div>
+          <div className="text-center space-y-1.5 max-w-sm px-6">
+            <p className="text-xs font-mono text-emerald-400 tracking-wider uppercase">
+              {loadingStage === 'session'
+                ? 'Preparing Your Whiteboard Session'
+                : 'Generating Your System Design Question'}
+            </p>
+            <p className="text-[10px] text-slate-500 leading-relaxed">
+              {loadingStage === 'session'
+                ? 'Connecting your voice session and loading the practice environment...'
+                : 'The tutor is putting together a question and hints tailored to your session...'}
+            </p>
+          </div>
+          <div className="h-1 bg-slate-900 overflow-hidden rounded-full w-32">
+            <div className="h-full bg-emerald-500 animate-pulse w-full" />
+          </div>
+        </div>
+      )}
 
       {/* Workspace Header */}
       <header className="border-b border-slate-900 bg-slate-950/20 backdrop-blur-md px-6 py-4 flex items-center justify-between relative z-10">
@@ -184,8 +279,10 @@ export default function WorkspaceHome() {
           
           {/* OPTION 1: INTERVIEW MODE */}
           <div 
-            onClick={() => navigate('/workspace/interview-mode')}
-            className="group cursor-pointer bg-slate-950/30 border border-slate-900 hover:border-indigo-500/30 rounded-2xl p-6 transition-all duration-300 hover:shadow-[0_0_30px_rgba(99,102,241,0.05)] flex flex-col justify-between h-72 relative"
+            onClick={isLoadingTutorMode ? undefined : () => navigate('/workspace/interview-mode')}
+            className={`group bg-slate-950/30 border border-slate-900 hover:border-indigo-500/30 rounded-2xl p-6 transition-all duration-300 hover:shadow-[0_0_30px_rgba(99,102,241,0.05)] flex flex-col justify-between h-72 relative ${
+              isLoadingTutorMode ? 'pointer-events-none' : 'cursor-pointer'
+            }`}
           >
             {/* Corner highlight glow */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/0 group-hover:bg-indigo-600/5 rounded-bl-full transition-all duration-300 blur-2xl" />
@@ -212,8 +309,10 @@ export default function WorkspaceHome() {
 
           {/* OPTION 2: TUTOR MODE */}
           <div 
-            onClick={() => navigate('/workspace/tutor-mode')}
-            className="group cursor-pointer bg-slate-950/30 border border-slate-900 hover:border-emerald-500/30 rounded-2xl p-6 transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.05)] flex flex-col justify-between h-72 relative"
+            onClick={isLoadingTutorMode ? undefined : navigateToTutorMode}
+            className={`group bg-slate-950/30 border border-slate-900 hover:border-emerald-500/30 rounded-2xl p-6 transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.05)] flex flex-col justify-between h-72 relative ${
+              isLoadingTutorMode ? 'pointer-events-none' : 'cursor-pointer'
+            }`}
           >
             {/* Corner highlight glow */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600/0 group-hover:bg-emerald-600/5 rounded-bl-full transition-all duration-300 blur-2xl" />
@@ -239,6 +338,16 @@ export default function WorkspaceHome() {
           </div>
 
         </div>
+
+        {/* Tutor mode error banner -- only shown if the /session or
+            /webrtc/token calls fail; otherwise this stays hidden. */}
+        {tutorModeError && (
+          <div className="mt-4 text-center">
+            <p className="inline-block text-xs text-red-400 font-mono bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-2">
+              {tutorModeError}
+            </p>
+          </div>
+        )}
 
         {/* Footer info label */}
         <div className="mt-12 text-center">

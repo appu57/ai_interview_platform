@@ -16,7 +16,6 @@ def get_database_url() -> str:
     if db_url:
         return db_url
     
-#Creating async engine
 _engine = None
 _session_factory = None
 
@@ -36,7 +35,6 @@ def get_engine():
         )
     return _engine
 
-# Create session maker for active transactions
 def get_session_factory():
     global _session_factory
     if _session_factory is None:
@@ -54,7 +52,6 @@ def get_session_factory():
 
 Base = declarative_base()
 
-#FastAPI dependency
 async def get_db()-> AsyncGenerator[AsyncSession, None]:
     factory = get_session_factory()
     async with factory() as session:

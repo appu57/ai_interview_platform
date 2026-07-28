@@ -124,8 +124,6 @@ class ConversationalMessages(Base):
     ai_feedback_correction: Mapped[Optional[str]] = mapped_column(Text, nullable=True) # Live corrections from AI agent for each conversation
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     session = relationship("InterviewSession", back_populates="messages")
-    #LHS is equal to back_populates of dependent table
-    #InterviewSession should be equal to class name not table name
 
 class UserAnalyticsLedger(Base):
     __tablename__ = "user_analytics_ledgers"
