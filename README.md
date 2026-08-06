@@ -5,13 +5,7 @@ project for software engineering roles. It combines a **LangGraph-orchestrated
 multi-agent backend**, a **locally fine-tuned tutor model**, a **real-time voice pipeline**,
 and **whiteboard-vision system-design grading** into a single product.
 
-This README documents the system as it exists in this codebase. For deep, diagram-level
-detail on the three most architecturally interesting subsystems, see:
-
-- [`docs/architecture/tutor-nodes-uml.md`](docs/architecture/tutor-nodes-uml.md) — LangGraph system-design **tutor node** pipeline (HLD + LLD)
-- [`docs/architecture/finetune-pipeline-uml.md`](docs/architecture/finetune-pipeline-uml.md) — local model **fine-tuning** pipeline (HLD + LLD)
-- [`docs/architecture/voice-pipeline-uml.md`](docs/architecture/voice-pipeline-uml.md) — real-time **voice (STT/TTS)** pipeline (HLD + LLD)
-
+This README documents the system as it exists in this codebase.
 ---
 
 ## Table of Contents
@@ -337,7 +331,8 @@ in Russian, the second never learned to emit a stop token, and the third, built 
 straight into code instead of following documentation or tutorials first and it worked, and cost
 enough debugging along the way to surface a lot of adjacent fine-tuning concepts that
 wouldn't have come up otherwise. That "break first, understand why, fix it" loop is a
-deliberate part of how this project was built, not just a footnote.
+deliberate part of how this project was built, not just a footnote. 
+I'm committing this code unpolished and it remains unrefined by design: I'm committing it intact so I can always look back at the exact missteps that built my understanding.
 
 ## Disclaimer
 

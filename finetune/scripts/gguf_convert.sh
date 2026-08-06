@@ -54,6 +54,7 @@
 # echo "Next: ./quantize.sh $OUTPUT_GGUF"
  
 
+#After fixing EOS
 set -e
  
 MERGED_MODEL_DIR="${1:-finetune/merged/merged_model_with_eos}"

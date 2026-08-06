@@ -3,10 +3,13 @@ from groq import Groq, APIStatusError
 from dotenv import load_dotenv
 import random
 import re
+from finetune.scripts.logging_utils import get_logger
 
 random.seed(42)
 load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+log = get_logger("mockai.pipeline.build_dataset")
+
 
 TUTOR_SYSTEM_PROMPT = (
     "You are a patient DSA and System Design tutor speaking aloud to a student "
@@ -307,22 +310,22 @@ def validate_entries(raw_entries: list[dict]) -> tuple[list[dict], list[dict]]:
 
 def main():
     raw_entries = load_raw_entries(INPUT_PATH)
-    print(f"Loaded {len(raw_entries)} raw entries")
+    log.warning(f"Loaded {len(raw_entries)} raw entries")
 
     raw_entries, skipped = validate_entries(raw_entries)
     if skipped:
-        print(f"\n Skipped {len(skipped)} malformed entries:")
+        log.warning(f"\n Skipped {len(skipped)} malformed entries:")
         for s in skipped:
-            print(f"  - index {s['index']} (id={s.get('entry_id', '?')}): {s['reason']}")
-            print(f"    preview: {s['entry_preview']}")
-        print()
-    print(f"Proceeding with {len(raw_entries)} valid entries\n")
+            log.warning(f"  - index {s['index']} (id={s.get('entry_id', '?')}): {s['reason']}")
+            log.warning(f"    preview: {s['entry_preview']}")
+        log.warning()
+    log.warning(f"Proceeding with {len(raw_entries)} valid entries\n")
 
     topic_counts = {"dsa": 0, "system_design": 0}
     for entry in raw_entries:
         topic_counts[detect_topic(entry)] += 1
     total = len(raw_entries)
-    print(f"Topic split in raw data: "
+    log.warning(f"Topic split in raw data: "
           f"DSA={topic_counts['dsa']} ({topic_counts['dsa']/total:.0%}), "
           f"System Design/Infra={topic_counts['system_design']} ({topic_counts['system_design']/total:.0%})")
 
@@ -342,7 +345,7 @@ def main():
                 all_examples.append(ex)
 
     all_examples = [ex for ex in all_examples if is_valid(ex)]
-    print(f"After diversification + filtering: {len(all_examples)} examples")
+    log.warning(f"After diversification + filtering: {len(all_examples)} examples")
 
     oversized = []
     for ex in all_examples:
@@ -353,19 +356,19 @@ def main():
             oversized.append({"question": human_turn["content"][:80], "estimated_tokens": tok_est})
 
     if oversized:
-        print(f"\n  {len(oversized)} examples estimate OVER ~1500 tokens "
+        log.warning(f"\n  {len(oversized)} examples estimate OVER ~1500 tokens "
               f"(content kept fully intact here, but Stage 3's max_seq_length=2048 "
               f"WILL truncate the tail of these during actual training unless raised):")
         for o in oversized[:10]:
-            print(f"  - ~{o['estimated_tokens']} tok: {o['question']}...")
+            log.warning(f"  - ~{o['estimated_tokens']} tok: {o['question']}...")
         if len(oversized) > 10:
-            print(f"  ... and {len(oversized) - 10} more")
+            log.warning(f"  ... and {len(oversized) - 10} more")
 
     final_topic_counts = {"dsa": 0, "system_design": 0}
     for ex in all_examples:
         final_topic_counts[ex["topic"]] += 1
     total_final = len(all_examples)
-    print(f"Topic split in final dataset: "
+    log.warning(f"Topic split in final dataset: "
           f"DSA={final_topic_counts['dsa']} ({final_topic_counts['dsa']/total_final:.0%}), "
           f"System Design/Infra={final_topic_counts['system_design']} ({final_topic_counts['system_design']/total_final:.0%})")
 
@@ -382,8 +385,8 @@ def main():
         for ex in val:
             f.write(json.dumps(ex) + "\n")
 
-    print(f"Wrote {len(train)} train examples -> {TRAIN_PATH}")
-    print(f"Wrote {len(val)} eval examples -> {EVAL_PATH}")
+    log.warning(f"Wrote {len(train)} train examples -> {TRAIN_PATH}")
+    log.warning(f"Wrote {len(val)} eval examples -> {EVAL_PATH}")
 
 
 if __name__ == "__main__":

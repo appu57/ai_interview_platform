@@ -6,6 +6,8 @@ import os
 import argparse
 from huggingface_hub import snapshot_download
 
+from finetune.scripts.retry_utils import retry
+
 variants = {
     "4bit":{
         "hub_name":"unsloth/Qwen3-4B-Instruct-2507-bnb-4bit",
@@ -19,23 +21,28 @@ variants = {
     }
 }
 
+
+@retry(times=4, base_delay=10.0)
+def _download(repo_id: str, local_dir: str) -> str:
+    return snapshot_download(repo_id=repo_id, local_dir=local_dir)
+
 def download_variant(key:str):
     config = variants[key]
     os.makedirs(config["local_dir"], exist_ok=True)
+    local_path = _download(config["hub_name"], config["local_dir"])
 
-    local_path = snapshot_download(
-        repo_id= config["hub_name"],
-        local_dir=config["local_dir"],
-        local_dir_use_symlinks=False
-    )
+    # local_path = snapshot_download(
+    #     repo_id= config["hub_name"],
+    #     local_dir=config["local_dir"],
+    #     local_dir_use_symlinks=False  // local_dir_use_symlinks deprecated in latest huggingface_hub, so using retry decorator instead
+    # )
 
     total_size_mb = 0
     for f in sorted(os.listdir(local_path)):
         full_path = os.path.join(local_path, f)
         if os.path.isfile(full_path):
-            size_mb = os.path.getsize(full_path)/(1024*1024)
-            total_size_mb+=size_mb
-    print(f"Total size in mb: {total_size_mb:8.1f} MB")
+            total_size_mb += os.path.getsize(full_path) / (1024 * 1024)
+    print(f"Total size in mb: {total_size_mb:8.1f} MB") #8.1f for formatting to 8 characters wide, 1 decimal place
 
 def main():
     parser = argparse.ArgumentParser()

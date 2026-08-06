@@ -4,11 +4,19 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 from datasets import load_dataset
 
+from finetune.scripts.logging_utils import get_logger
+from finetune.scripts.retry_utils import retry
+
+
 MODEL_NAME = "unsloth/Qwen3-4B-Instruct-2507"
 ADAPTER_PATH = os.path.join("finetune", "adapter", "adapter_final_v2")
-MERGED_OUT = os.path.join("finetune", "merged_model_v2")
+MERGED_OUT = os.path.join("finetune","merged", "merged_model_v2")
 MERGED_PATH = os.path.join("finetune","merged","merged_model_v2")
 EVAL_PATH = os.path.join("finetune", "dataset", "eval.jsonl")
+
+
+log = get_logger("mockai.pipeline.merge")
+
 
 def get_first_user_message(conversations):
     for turn in conversations:
@@ -38,15 +46,20 @@ def generate(model, tokenizer, question, max_new_tokens=200, greedy=True):
     new_tokens = output[0][input_ids.shape[1]:]
     return tokenizer.decode(new_tokens, skip_special_tokens=True), len(new_tokens)
 
-
-
-def main():
-    print(f"Loading base model on CPU...")
+@retry(times=3, base_delay=5.0)
+def load_base_model_and_tokenizer():
     base_model = AutoModelForCausalLM.from_pretrained(
         MODEL_NAME,
         torch_dtype=torch.bfloat16,
         device_map="cpu",
     )
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    return base_model, tokenizer
+
+
+def main():
+    print(f"Loading base model on CPU...")
+    base_model = load_base_model_and_tokenizer()
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
