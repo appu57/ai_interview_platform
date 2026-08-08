@@ -2,16 +2,16 @@
 #Train
 #Validate
 #merge adapters
-#dowload llama.cpp and check if llama.quantise llama.imatrix, convert_to_gguf exists
+#download llama.cpp and check if llama.quantise llama.imatrix, convert_to_gguf exists
 #bash gguf_convert.sh
 #python calibration.py
 #bash quantize (if fails to find imatrix cp llama.cpp/build/bin/llama-* llama.cpp/)
 
 
-# (ai_interview_platform) apoor@Arjun:~/projects/ai_interview_platform$ wc -c llama.cpp/calibration_data.txt
+# (ai_interview_platform)$ wc -c llama.cpp/calibration_data.txt
 # 2521171 llama.cpp/calibration_data.txt
-# (ai_interview_platform) apoor@Arjun:~/projects/ai_interview_platform$ head -c 250000 llama.cpp/calibration_data.txt > llama.cpp/calibration_data_small.txt
-# (ai_interview_platform) apoor@Arjun:~/projects/ai_interview_platform$ bash quantize.sh finetune/gguf/model-f16.gguf llama.cpp/calibration_data_small.txt
+# (ai_interview_platform)$ head -c 250000 llama.cpp/calibration_data.txt > llama.cpp/calibration_data_small.txt
+# (ai_interview_platform)$ bash quantize.sh finetune/gguf/model-f16.gguf llama.cpp/calibration_data_small.txt
 # bash: quantize.sh: No such file or directory
 
 # The imatrix's job is to estimate, per weight, "how much does this weight matter for typical outputs" by observing activations on a sample of representative text. Once you have a few hundred KB to a couple MB of reasonably representative text, more data gives rapidly diminishing returns — you're not meaningfully improving quantization quality by running all 815 examples through it instead of 100-150,
@@ -29,9 +29,9 @@
 
 
 #runs where llama.cpp exists
-# (ai_interview_platform) apoor@Arjun:~/projects/ai_interview_platform$ bash finetune/scripts/gguf_convert.sh finetune/merged/mer
+# (ai_interview_platform)$ bash finetune/scripts/gguf_convert.sh finetune/merged/mer
 # ged_model_with_eos finetune/gguf/model-retrain-f16.gguf
-#Mistake i did because of which i had to retrain thrice what was the issue first time after training it gave in russian, second mistake is it didnt learn to stop and third worked BECAUSE i didnt follow documentation or youtube jumped into coding i think it was good and bad, bad because we need to learn certain way of using built libraries but good was i broke and learnt which led me to learn 10000 other concepts of finetuning llm. SO THE STATEMENT BREAK AND LEARN WAS USEFUL TO ME
+#Mistake that i did because of which i had to retrain thrice was the issue first time after training it gave in russian, second mistake is it didnt learn to stop and third worked. I didnt follow documentation or youtube jumped into coding i think it was good and bad, bad because we need to learn certain way of using built-in libraries but good because I it helped me to understand through break and learn which helped me to learn 100 other concepts of finetuning and llm. SO THE STATEMENT BREAK AND LEARN WAS USEFUL TO ME
 
 
 # FROM ./model-Q4_K_M.gguf
@@ -52,8 +52,8 @@
 # {{ end }}{{ if .Prompt }}<|im_start|>user
 # {{ .Prompt }}<|im_end|>
 # {{ end }}<|im_start|>assistant
-# {{ .Response }}<|im_end|>
 # """
+
 # PARAMETER stop "<|im_end|>"
 # PARAMETER num_ctx 2048
 # EOF
